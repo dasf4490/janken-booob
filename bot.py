@@ -18,15 +18,17 @@ intents.guilds = True
 intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Flaskアプリケーションの設定（ヘルスチェック用）
+# Flaskアプリケーション（ヘルスチェック用）
 app = Flask("")
 
 @app.route("/")
 def home():
-    return "Bot is running!"
+    return "Bot is running!", 200  # ヘルスチェック用レスポンス
 
 def run_http_server():
-    app.run(host="0.0.0.0", port=8000)
+    # Koyebで提供されるPORT環境変数を使用
+    port = int(os.getenv("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
 
 def keep_alive():
     threading.Thread(target=run_http_server).start()

@@ -33,11 +33,53 @@ def run_http_server():
 def keep_alive():
     threading.Thread(target=run_http_server).start()
 
-# Discord Botのイベントとコマンド
+# グローバル辞書でDMメッセージを管理
+user_messages = {}
+
 @bot.event
 async def on_ready():
     print(f"{bot.user.name} is ready!")
 
+@bot.event
+async def on_member_update(before, after):
+    # 新しいロールが追加された場合をチェック
+    new_roles = set(after.roles) - set(before.roles)
+    for role in new_roles:
+        if role.name == "見学":  # 対象のロール名を指定
+            try:
+                # メンバーにDMを送信
+                message = await after.send(
+                    f"こんにちは！あなたに '{role.name}' が付与されました！\n"
+                    "このロールが付いた人はメッセージを送れなくなり、見ることしかできません。\n"
+                    "それがいやな場合、以下にアクセスしてください:\n"
+                    "https://discord.com/channels/1165775639798878288/1351191234961604640"
+                )
+                # メッセージを記録
+                user_messages[after.id] = message.id
+                print(f"Message sent to {after.name}")
+            except discord.Forbidden:
+                print(f"Could not send message to {after.name} (DM disabled or permission denied)")
+            break
+
+    # 削除されたロールがある場合のチェック
+    removed_roles = set(before.roles) - set(after.roles)
+    for role in removed_roles:
+        if role.name == "YourRoleName":  # 対象のロール名を指定
+            # 該当ユーザーの送信済みメッセージを削除
+            if after.id in user_messages:
+                try:
+                    message_id = user_messages.pop(after.id)
+                    channel = await after.create_dm()  # DMチャンネルを取得
+                    message = await channel.fetch_message(message_id)
+                    await message.delete()
+                    print(f"Message deleted for {after.name}")
+                except discord.Forbidden:
+                    print(f"Could not delete message for {after.name} (DM disabled or permission denied)")
+                except discord.NotFound:
+                    print(f"Message not found for {after.name}")
+            break
+
+# じゃんけんゲームコマンド
 @bot.command()
 async def janken(ctx):
     await ctx.send("じゃんけんを始めます！ボットがDMを送信しますので、リアクションで手を選んでください！")
